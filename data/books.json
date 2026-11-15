@@ -1,19 +1,37 @@
 [
   {
-    "id": "118dc39f",
-    "title": "test",
-    "author": "غير محدد",
-    "category": "عام",
-    "summary": "كتاب صوتي تم استخراجه وفهرسته آلياً من ملف PDF.",
+    "id": "drama3_makkah",
+    "title": "حكايا وسوالف من مكة المكرمة (بصوت دراما 3)",
+    "author": "موديل Fish Audio Drama-3 (أداء مكي)",
+    "category": "روايات",
+    "summary": "تسجيل صوتي تجريبي من موديل دراما 3 (Drama-3) بنبرة مكية حجازية أصيلة، تم توليده ومعالجته محلياً على جهازك Strix Halo.",
     "chapters": [
-      "المقدمة وقراءة الكتاب"
+      "ترحيب وسوالف مكية"
     ],
-    "cover_url": "/covers/118dc39f.jpg",
-    "audio_url": "/audio/118dc39f.mp3",
+    "cover_url": "/static/default_cover.svg",
+    "audio_url": "/audio/makkah_drama3_sample.wav",
     "duration": "00:10",
-    "total_pages": 4,
-    "voice": "ar-SA-HamedNeural",
-    "filename": "test.pdf",
+    "total_pages": 1,
+    "voice": "drama3",
+    "filename": "makkah_drama3_sample.wav",
+    "translated": false,
+    "original_lang": "ar"
+  },
+  {
+    "id": "drama3_voice_clone",
+    "title": "استنساخ الصوت الدرامي (Drama-3 Voice Clone)",
+    "author": "موديل Fish Audio Drama-3",
+    "category": "عام",
+    "summary": "تسجيل صوتي لاستنساخ الصوت عبر Drama-3 بالملف الصوتي المرجعي.",
+    "chapters": [
+      "مقطع استنساخ الصوت"
+    ],
+    "cover_url": "/static/default_cover.svg",
+    "audio_url": "/audio/voice_clone_drama3_sample.wav",
+    "duration": "00:12",
+    "total_pages": 1,
+    "voice": "drama3",
+    "filename": "voice_clone_drama3_sample.wav",
     "translated": false,
     "original_lang": "ar"
   },
@@ -31,6 +49,8 @@
     "duration": "00:35",
     "total_pages": 5,
     "voice": "ar-SA-HamedNeural",
-    "filename": "al_ahsa_history.pdf"
+    "filename": "al_ahsa_history.pdf",
+    "translated": false,
+    "original_lang": "ar"
   }
 ]
