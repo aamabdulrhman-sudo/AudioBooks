@@ -116,19 +116,99 @@ def analyze_and_categorize(full_text, filename, api_key=None):
         "chapters": ["المقدمة وقراءة الكتاب"]
     }
 
-def is_predominantly_english(text):
-    """Checks if the text is predominantly English."""
+def detect_language(text):
+    """Accurately detects if book is Arabic or English."""
+    arabic_chars = len(re.findall(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]', text))
     latin_chars = len(re.findall(r'[a-zA-Z]', text))
-    arabic_chars = len(re.findall(r'[\u0600-\u06FF]', text))
-    return latin_chars > (arabic_chars * 2) and latin_chars > 50
+    # If the book contains Arabic content, it is ARABIC. Never translate!
+    if arabic_chars >= 25:
+        return "ar"
+    elif latin_chars >= 40:
+        return "en"
+    return "ar"
 
-def translate_chunks_to_arabic(text, api_key, progress_callback=None, task_id=None):
-    """Translates English text to fluent, literary Arabic using Gemini 3.8 Flash."""
-    if not api_key:
-        return text
+def clean_raw_text_for_speech(text):
+    """
+    Advanced heuristic cleaner: Removes all unmeaningful characters,
+    URLs, page numbers, footnote markers, publisher boilerplate, and noise.
+    """
+    if not text:
+        return ""
+
+    # 1. Remove URLs and emails
+    text = re.sub(r'https?://\S+|www\.\S+|\S+@\S+', '', text)
     
-    # Split text into chunks around paragraphs (~2500 chars)
-    paragraphs = text.split('\n\n')
+    # 2. Remove private-use unicode, corrupted font symbols
+    text = re.sub(r'[\ue000-\uf8ff\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+    
+    # 3. Process line by line
+    cleaned_lines = []
+    boilerplate_patterns = [
+        r'حقوق (الطبع|النشر) محفوظة',
+        r'رقم (الإيداع|الترخيص|الفسح)',
+        r'ISBN',
+        r'دار (النشر|التوزيع)',
+        r'الطبعة (الأولى|الثانية|الثالثة)',
+        r'شبكة\s+\S+\s+للكتب',
+        r'قسم الكتب',
+        r'فهرس المحتويات',
+        r'صندوق بريد',
+        r'هاتف\s*:',
+        r'فاكس\s*:'
+    ]
+    
+    for line in text.split('\n'):
+        s = line.strip()
+        if not s:
+            continue
+            
+        # Skip isolated numbers or page numbers (e.g. "12", "صفحة 4", "Page 15")
+        if re.match(r'^(صفحة|page|ص)?\s*\d+\s*$', s, re.IGNORECASE):
+            continue
+            
+        # Skip repetitive symbols (e.g. "......", "------", "******", "======")
+        if re.match(r'^[_\-=\.\*~#\s]{2,}$', s):
+            continue
+            
+        # Skip lines that match publisher/copyright boilerplate
+        if any(re.search(pat, s, re.IGNORECASE) for pat in boilerplate_patterns):
+            continue
+            
+        # Skip lines that are just footnote markers like "(1)", "[2]", "*"
+        if re.match(r'^[\(\[\*]\s*\d+\s*[\)\]]$', s):
+            continue
+            
+        cleaned_lines.append(s)
+        
+    result = " ".join(cleaned_lines)
+    
+    # 4. Remove inline footnote brackets like [1] or (12)
+    result = re.sub(r'\[\d+\]|\(\d+\)', '', result)
+    
+    # 5. Remove repetitive dots and dashes
+    result = re.sub(r'\.{2,}', '.. ', result)
+    result = re.sub(r'\-{2,}', ' ', result)
+    result = re.sub(r'\_{2,}', ' ', result)
+    result = re.sub(r'\*{2,}', ' ', result)
+    
+    # 6. Normalize whitespace
+    result = re.sub(r'\s+', ' ', result).strip()
+    return result
+
+def polish_audiobook_script(text, api_key, is_english=False, progress_callback=None, task_id=None):
+    """
+    Uses Gemini 3.8 Flash to transform raw text into an authentic,
+    professional audiobook narration script:
+    - If Arabic: Keeps in Arabic! Strips all remaining noise, formats for natural narration.
+    - If English: Translates to rich, literary Arabic.
+    """
+    # Pre-clean noise first
+    cleaned = clean_raw_text_for_speech(text)
+    if not cleaned or not api_key:
+        return cleaned or text
+
+    # Split into chunks of ~2500 characters to process
+    paragraphs = cleaned.split('. ')
     chunks = []
     curr_chunk = []
     curr_len = 0
@@ -138,30 +218,45 @@ def translate_chunks_to_arabic(text, api_key, progress_callback=None, task_id=No
         if not p:
             continue
         if curr_len + len(p) > 2500:
-            chunks.append("\n\n".join(curr_chunk))
+            chunks.append(". ".join(curr_chunk) + ".")
             curr_chunk = [p]
             curr_len = len(p)
         else:
             curr_chunk.append(p)
             curr_len += len(p)
     if curr_chunk:
-        chunks.append("\n\n".join(curr_chunk))
+        chunks.append(". ".join(curr_chunk) + ".")
         
     if not chunks:
-        chunks = [text[:3000]]
+        chunks = [cleaned[:3000]]
         
-    translated_parts = []
     total_chunks = len(chunks)
+    script_parts = []
     
     for idx, chunk in enumerate(chunks):
         if progress_callback:
-            pct = 30 + int((idx / total_chunks) * 30) # 30% to 60%
-            progress_callback(task_id, pct, f"جاري ترجمة الكتاب إلى لغة عربية فصيحة ({idx+1}/{total_chunks}) 🌐")
+            pct = 30 + int((idx / total_chunks) * 35) # 30% to 65%
+            action_name = "ترجمة وصياغة" if is_english else "تهيئة وضبط السرد الصوتي"
+            progress_callback(task_id, pct, f"جاري {action_name} باحترافية ({idx+1}/{total_chunks}) 🎙️")
             
-        prompt = f"""أنت مترجم أدبي محترف. ترجم النص التالي من كتاب إنجليزي إلى لغة عربية فصحى عذبة، سلسة، ورصينة جداً، بأسلوب سردي مشوق ومناسب للاستماع الصوتي في كتاب صوتي. حافظ على دقة الأفكار وتجنب الركاكة والترجمة الحرفية. أخرج النص المترجم فقط دون أي تعليقات أو هوامش إضافية:
+        if is_english:
+            prompt = f"""أنت مخرج ومترجم كتب صوتية محترف. ترجم النص الإنجليزي التالي إلى لغة عربية فصحى عذبة وسلسة وممتعة للاستماع الصوتي.
+احذف تماماً أي أرقام صفحات، هوامش، روابط، أو تفاصيل غير مفيدة للسرد.
+أخرج النص المترجم الجاهز للإلقاء الصوتي فقط دون أي مقدمات أو تعليقات منك:
 ---
 {chunk}
 ---"""
+        else:
+            prompt = f"""أنت مخرج ومعد كتب صوتية محترف (Audiobook Producer).
+أمامك نص مستخرج من كتاب عربي. مهمتك إعداده للإلقاء الصوتي الاحترافي:
+1. احتفظ بالنص باللغة العربية الفصحى كما هو تماماً، ولا تترجمه إطلاقاً!
+2. احذف كل ما ليس له معنى أو يشتت الاستماع: (أرقام الصفحات، الهوامش، روابط المواقع، فهارس النقاط، ورموز الطباعة).
+3. اجعل النص يتدفق بسلاسة ووضوح بأحسن صياغة سردية، وضع الفواصل والنقاط في مكانها الصحيح ليتنفس القارئ الصوتي بشكل طبيعي.
+4. أخرج النص الصافي الجاهز للقراءة الصوتية فقط، دون أي تعليقات منك:
+---
+{chunk}
+---"""
+
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
         try:
             resp = requests.post(url, json={
@@ -169,40 +264,19 @@ def translate_chunks_to_arabic(text, api_key, progress_callback=None, task_id=No
             }, timeout=25)
             if resp.status_code == 200:
                 data = resp.json()
-                translated = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                translated_parts.append(translated)
+                out = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                script_parts.append(out)
             else:
-                translated_parts.append(chunk)
+                script_parts.append(chunk)
         except Exception as e:
-            print(f"Translation chunk error: {e}")
-            translated_parts.append(chunk)
+            print(f"Script polishing error: {e}")
+            script_parts.append(chunk)
             
-    return "\n\n".join(translated_parts)
-
-def clean_arabic_text(text):
-    """Cleans text for speech synthesis, removes page numbers and headers."""
-    # Remove lines with just numbers (page numbers)
-    lines = text.split('\n')
-    cleaned_lines = []
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.isdigit():
-            continue
-        # Remove repeated hyphens or underscores
-        if re.match(r'^[-_=\.]{3,}$', stripped):
-            continue
-        cleaned_lines.append(stripped)
-    
-    result = " ".join(cleaned_lines)
-    # Remove excessive spaces
-    result = re.sub(r'\s+', ' ', result).strip()
-    return result
+    return "\n\n".join(script_parts)
 
 async def generate_audiobook_files(text, book_id, voice='ar-SA-HamedNeural', max_chars=12000):
     """Generates MP3 audio file from text using edge-tts."""
-    cleaned = clean_arabic_text(text)
+    cleaned = clean_raw_text_for_speech(text)
     if not cleaned:
         cleaned = "عذراً، هذا الملف لا يحتوي على نص قابل للقراءة صوتياً."
     
@@ -215,8 +289,7 @@ async def generate_audiobook_files(text, book_id, voice='ar-SA-HamedNeural', max
     communicate = edge_tts.Communicate(text_to_speak, voice)
     await communicate.save(audio_path)
     
-    # Calculate duration approximately (or via mutagen if installed, or char estimate)
-    # Average Arabic speech rate: ~15-18 chars per second
+    # Calculate duration approximately
     estimated_seconds = max(10, int(len(text_to_speak) / 16))
     mins = estimated_seconds // 60
     secs = estimated_seconds % 60
@@ -225,40 +298,53 @@ async def generate_audiobook_files(text, book_id, voice='ar-SA-HamedNeural', max
     return f"/audio/{audio_filename}", duration_str
 
 async def process_pdf_pipeline(task_id, pdf_path, filename, api_key=None, voice='ar-SA-HamedNeural', auto_translate=True, progress_callback=None):
-    """Full automated ingestion pipeline with intelligent English-to-Arabic translation."""
+    """Full automated ingestion pipeline with intelligent Arabic preservation and professional script polishing."""
     try:
         book_id = str(uuid.uuid4())[:8]
         
-        # Step 1: Extract
+        # Step 1: Extract (in thread)
         if progress_callback:
             progress_callback(task_id, 15, "جاري استخراج النصوص وتوليد غلاف الكتاب 📄")
-        pdf_data = extract_pdf_data(pdf_path, book_id)
+        pdf_data = await asyncio.to_thread(extract_pdf_data, pdf_path, book_id)
         
         raw_text = pdf_data["full_text"]
-        is_english = is_predominantly_english(raw_text)
+        lang = detect_language(raw_text)
+        is_english = (lang == "en")
         is_translated = False
         
-        # Step 2: Language Check & Translation
-        if is_english and auto_translate and api_key:
-            if progress_callback:
-                progress_callback(task_id, 30, "تم رصد كتاب إنجليزي! جاري الترجمة الاحترافية للعربية الفصحى 🌐")
-            processed_text = translate_chunks_to_arabic(raw_text, api_key, progress_callback, task_id)
-            is_translated = True
-        else:
-            processed_text = raw_text
-
-        # If English book and not translated, switch to high-quality English voice
-        if is_english and not is_translated and not voice.startswith('en-'):
-            voice = 'en-US-GuyNeural'
-        
-        # Step 3: Index & Categorize
+        # Step 2: Professional Polishing & Language Handling
         if progress_callback:
-            progress_callback(task_id, 65, "جاري فهرسة وتصنيف الكتاب وتوليد الملخص بالذكاء الاصطناعي 🧠")
-        meta = analyze_and_categorize(processed_text, filename, api_key)
+            if is_english and auto_translate and api_key:
+                progress_callback(task_id, 30, "تم رصد كتاب إنجليزي! جاري الترجمة الاحترافية للعربية الفصحى 🌐")
+            else:
+                progress_callback(task_id, 30, "كتاب عربي! جاري تنقية السرد وحذف الهوامش والأرقام غير المفيدة 📖✨")
+                
+        # Run polishing/translating in thread to keep event loop responsive
+        processed_text = await asyncio.to_thread(
+            polish_audiobook_script,
+            raw_text,
+            api_key,
+            is_english and auto_translate,
+            progress_callback,
+            task_id
+        )
+        
+        if is_english and auto_translate and api_key:
+            is_translated = True
+            
+        # Ensure voice is Arabic if book is in Arabic (or translated)
+        if not is_english or is_translated:
+            if voice.startswith('en-'):
+                voice = 'ar-SA-HamedNeural'
+
+        # Step 3: Index & Categorize (in thread)
+        if progress_callback:
+            progress_callback(task_id, 70, "جاري فهرسة وتصنيف الكتاب وتوليد الملخص بالذكاء الاصطناعي 🧠")
+        meta = await asyncio.to_thread(analyze_and_categorize, processed_text, filename, api_key)
         
         # Step 4: Audio Generation
         if progress_callback:
-            progress_callback(task_id, 80, f"جاري تسجيل الكتاب صوتياً بنبرة ({voice}) 🎙️")
+            progress_callback(task_id, 85, f"جاري تسجيل الكتاب صوتياً بنبرة احترافية ({voice}) 🎙️")
         audio_url, duration_str = await generate_audiobook_files(processed_text, book_id, voice=voice)
         
         # Step 5: Save to Library
@@ -284,10 +370,17 @@ async def process_pdf_pipeline(task_id, pdf_path, filename, api_key=None, voice=
         save_books(books)
         
         if progress_callback:
-            success_msg = "تمت ترجمة وتوليد الكتاب الصوتي وإضافته لمكتبتك بنجاح! 📚✨" if is_translated else "تمت إضافة الكتاب الصوتي إلى مكتبتك بنجاح! 📚✨"
+            success_msg = "تمت ترجمة وتوليد الكتاب الصوتي وإضافته لمكتبتك بنجاح! 📚✨" if is_translated else "تمت تنقية وتوليد الكتاب الصوتي وإضافته لمكتبتك بنجاح! 📚✨"
             progress_callback(task_id, 100, success_msg, book=book_record)
             
         return book_record
+    except Exception as e:
+        print(f"PIPELINE ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        if progress_callback:
+            progress_callback(task_id, -1, f"حدث خطأ أثناء معالجة الكتاب: {str(e)}")
+        raise e
     except Exception as e:
         if progress_callback:
             progress_callback(task_id, -1, f"حدث خطأ أثناء معالجة الكتاب: {str(e)}")
