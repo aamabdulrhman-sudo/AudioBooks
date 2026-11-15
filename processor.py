@@ -9,7 +9,7 @@ import fitz  # PyMuPDF
 import edge_tts
 import requests
 
-COMFY_HOST = os.environ.get('COMFY_HOST', '127.0.0.1')
+COMFY_HOST = os.environ.get('COMFY_HOST', 'host.docker.internal' if os.path.exists('/.dockerenv') else '127.0.0.1')
 COMFY_PORT = os.environ.get('COMFY_PORT', '8188')
 COMFY_OUTPUT_DIR = os.environ.get('COMFY_OUTPUT_DIR', r'D:\comfy\ComfyUI_windows_portable\ComfyUI\output')
 
@@ -92,10 +92,15 @@ def analyze_and_categorize(full_text, filename, api_key=None):
   "chapters": ["عنوان الفصل أو الموضوع الأول", "عنوان الفصل الثاني", ...]
 }}
 """
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
             resp = requests.post(url, json={
                 "contents": [{"parts": [{"text": prompt}]}]
-            }, timeout=15)
+            }, timeout=10)
+            if resp.status_code != 200:
+                url_fb = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                resp = requests.post(url_fb, json={
+                    "contents": [{"parts": [{"text": prompt}]}]
+                }, timeout=10)
             
             if resp.status_code == 200:
                 data = resp.json()
@@ -263,17 +268,28 @@ def polish_audiobook_script(text, api_key, is_english=False, progress_callback=N
 {chunk}
 ---"""
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
+        # Try gemini-2.5-flash with fallback to gemini-1.5-flash
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
         try:
             resp = requests.post(url, json={
                 "contents": [{"parts": [{"text": prompt}]}]
-            }, timeout=25)
+            }, timeout=12)
             if resp.status_code == 200:
                 data = resp.json()
                 out = data["candidates"][0]["content"]["parts"][0]["text"].strip()
                 script_parts.append(out)
             else:
-                script_parts.append(chunk)
+                # Fallback to gemini-1.5-flash
+                fb_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                fb_resp = requests.post(fb_url, json={
+                    "contents": [{"parts": [{"text": prompt}]}]
+                }, timeout=10)
+                if fb_resp.status_code == 200:
+                    fb_data = fb_resp.json()
+                    fb_out = fb_data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    script_parts.append(fb_out)
+                else:
+                    script_parts.append(chunk)
         except Exception as e:
             print(f"Script polishing error: {e}")
             script_parts.append(chunk)

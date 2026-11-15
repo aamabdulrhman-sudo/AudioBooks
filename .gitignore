@@ -6,3 +6,11 @@ __pycache__/
 .DS_Store
 uploads/*
 !uploads/.gitkeep
+covers/*
+!covers/.gitkeep
+audio/*
+!audio/.gitkeep
+!audio/sample1.mp3
+!audio/makkah_drama3_sample.wav
+!audio/voice_clone_drama3_sample.wav
+!audio/118dc39f.mp3

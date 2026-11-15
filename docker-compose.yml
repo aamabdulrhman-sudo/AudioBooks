@@ -12,3 +12,7 @@ services:
       - ./uploads:/app/uploads
     environment:
       - PORT=8086
+      - COMFY_HOST=host.docker.internal
+      - COMFY_PORT=8188
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
