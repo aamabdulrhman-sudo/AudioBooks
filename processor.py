@@ -298,7 +298,7 @@ async def generate_with_drama3(text, book_id, progress_callback=None, task_id=No
             "inputs": {
                 "model": "drama3-t8-w4a8.safetensors",
                 "codec": "drama3-codec.safetensors",
-                "expert_cache_gb": 16.0,
+                "expert_cache_gb": 32.0,
                 "gdn_backend": "torch",
                 "model_path": "",
                 "codec_path": "",
@@ -313,7 +313,7 @@ async def generate_with_drama3(text, book_id, progress_callback=None, task_id=No
         "2": {
             "class_type": "LoadAudio",
             "inputs": {
-                "audio": "common_voice_en_10119832.wav"
+                "audio": "makkah_voice_reference.wav"
             }
         },
         "3": {
@@ -321,8 +321,8 @@ async def generate_with_drama3(text, book_id, progress_callback=None, task_id=No
             "inputs": {
                 "engine": ["1", 0],
                 "audio": ["2", 0],
-                "transcript": "We asked over twenty different people, and they all said it was his.",
-                "name": "ref0",
+                "transcript": "يا هلا والله ومسهلا يا سيدي، نورتنا وشرفتنا والله! إيش أخبارك وإيش مسوي؟ أبشر بالخير يا غالي، كل شيء تبغاه نسويه لك على كيف كيفك.",
+                "name": "makkah_voice",
                 "trim_silence": False,
                 "normalize": False
             }
@@ -330,7 +330,7 @@ async def generate_with_drama3(text, book_id, progress_callback=None, task_id=No
         "4": {
             "class_type": "T8DramaSession",
             "inputs": {
-                "direction": "[narrative]",
+                "direction": "[calm] [makkawi] [narrative]",
                 "references": ["3", 0]
             }
         },
