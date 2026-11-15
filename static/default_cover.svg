@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" width="300" height="450">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e1b4b;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#312e81;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#38bdf8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="300" height="450" rx="16" fill="url(#grad)"/>
+  <rect x="15" y="15" width="270" height="420" rx="12" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
+  <circle cx="150" cy="180" r="60" fill="url(#accent)" opacity="0.15"/>
+  <g transform="translate(110, 140) scale(1.6)" fill="url(#accent)">
+    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+    <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/>
+  </g>
+  <text x="150" y="270" font-family="'Tajawal', sans-serif" font-size="22" font-weight="bold" fill="#f8fafc" text-anchor="middle">كتاب صوتي</text>
+  <text x="150" y="300" font-family="'Tajawal', sans-serif" font-size="14" fill="#94a3b8" text-anchor="middle">المكتبة الصوتية الذكية</text>
+  <rect x="90" y="340" width="120" height="3" rx="1.5" fill="url(#accent)"/>
+</svg>

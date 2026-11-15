@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>المكتبة الصوتية الذكية | كتبك الـ PDF تتحول لصوت تلقائياً</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0d14;
+      --card-bg: rgba(22, 27, 44, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --primary: #10b981;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --player-bg: rgba(15, 23, 42, 0.95);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Tajawal', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0a0d14 70%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 120px; /* Space for sticky player */
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--accent), var(--primary));
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 8px 20px var(--accent-glow);
+    }
+
+    .brand-text h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-text p {
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 11px 22px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 14.5px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      border: none;
+      outline: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #0284c7);
+      color: white;
+      box-shadow: 0 4px 15px var(--accent-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(56, 189, 248, 0.4);
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Search & Filter Bar */
+    .filter-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 260px;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 12px 42px 12px 16px;
+      color: white;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .search-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-sub);
+    }
+
+    .categories {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      max-width: 100%;
+    }
+
+    .category-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-sub);
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .category-pill:hover, .category-pill.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    /* Books Grid */
+    .books-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 24px;
+    }
+
+    .book-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 22px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(20px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .book-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.6), 0 0 25px var(--accent-glow);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .cover-wrapper {
+      width: 100%;
+      height: 320px;
+      position: relative;
+      background: #0f172a;
+      overflow: hidden;
+    }
+
+    .cover-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s;
+    }
+
+    .book-card:hover .cover-img {
+      transform: scale(1.05);
+    }
+
+    .cover-badge {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--accent);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .duration-badge {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(10px);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .play-overlay-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      width: 60px;
+      height: 60px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      color: white;
+      opacity: 0;
+      transition: all 0.3s;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.5);
+    }
+
+    .book-card:hover .play-overlay-btn {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .book-info {
+      padding: 18px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .book-title {
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.35;
+      margin-bottom: 6px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      color: var(--text-main);
+    }
+
+    .book-author {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-bottom: 10px;
+    }
+
+    .book-summary {
+      font-size: 12.5px;
+      color: #94a3b8;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 16px;
+      flex: 1;
+    }
+
+    .book-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-listen {
+      flex: 1;
+      padding: 9px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent);
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 13.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-listen:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-download {
+      padding: 9px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-sub);
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .btn-download:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+    }
+
+    /* Empty State */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--card-bg);
+      border: 2px dashed var(--card-border);
+      border-radius: 24px;
+    }
+
+    .empty-icon {
+      font-size: 55px;
+      margin-bottom: 16px;
+    }
+
+    .empty-title {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .empty-desc {
+      color: var(--text-sub);
+      font-size: 14px;
+      max-width: 450px;
+      margin: 0 auto 20px;
+    }
+
+    /* Sticky Bottom Player */
+    .player-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--player-bg);
+      backdrop-filter: blur(25px);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      z-index: 100;
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.7);
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .player-bar.active {
+      transform: translateY(0);
+    }
+
+    .player-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 250px;
+    }
+
+    .player-thumb {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #1e1b4b;
+    }
+
+    .player-text h4 {
+      font-size: 14.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+
+    .player-text p {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .player-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      max-width: 600px;
+    }
+
+    .player-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .ctrl-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-sub);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ctrl-btn:hover {
+      color: white;
+      transform: scale(1.1);
+    }
+
+    .ctrl-btn.play-btn {
+      width: 42px;
+      height: 42px;
+      background: var(--primary);
+      border-radius: 50%;
+      color: white;
+      font-size: 20px;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+    }
+
+    .ctrl-btn.play-btn:hover {
+      transform: scale(1.08);
+    }
+
+    .player-progress {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .time-text {
+      font-size: 12px;
+      color: var(--text-sub);
+      font-variant-numeric: tabular-nums;
+      width: 45px;
+      text-align: center;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--primary));
+      border-radius: 10px;
+      width: 0%;
+      position: relative;
+    }
+
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      left: -5px;
+      top: -3.5px;
+      width: 12px;
+      height: 12px;
+      background: white;
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .progress-bar:hover .progress-fill::after {
+      opacity: 1;
+    }
+
+    .player-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 220px;
+      justify-content: flex-end;
+    }
+
+    .speed-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--accent);
+      padding: 5px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Upload Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 20px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: #12182b;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 28px;
+      width: 100%;
+      max-width: 520px;
+      padding: 30px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-sub);
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed rgba(56, 189, 248, 0.4);
+      background: rgba(56, 189, 248, 0.03);
+      border-radius: 20px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+      transform: scale(1.01);
+    }
+
+    .drop-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .drop-text {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .drop-sub {
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-bottom: 6px;
+    }
+
+    .form-select, .form-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 11px 14px;
+      color: white;
+      font-size: 13.5px;
+      outline: none;
+    }
+
+    .form-select:focus, .form-input:focus {
+      border-color: var(--accent);
+    }
+
+    /* Progress Box */
+    .progress-box {
+      display: none;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-top: 15px;
+    }
+
+    .progress-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .progress-bar-container {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--primary));
+      transition: width 0.4s ease;
+    }
+
+    .progress-status-text {
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">📚</div>
+        <div class="brand-text">
+          <h1>المكتبة الصوتية الذكية</h1>
+          <p>أرسل كتاب PDF ويتحول لكتاب صوتي مفهرس تلقائياً</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="openUploadBtn">📤 إرسال كتاب PDF جديد</button>
+      </div>
+    </header>
+
+    <!-- Search & Filter Bar -->
+    <div class="filter-bar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="ابحث عن كتاب، مؤلف، أو موضوع...">
+      </div>
+
+      <div class="categories" id="categoryTabs">
+        <button class="category-pill active" data-cat="all">الكل</button>
+        <button class="category-pill" data-cat="روايات">روايات</button>
+        <button class="category-pill" data-cat="تطوير ذات">تطوير ذات</button>
+        <button class="category-pill" data-cat="تقنية">تقنية</button>
+        <button class="category-pill" data-cat="دين">دين</button>
+        <button class="category-pill" data-cat="تاريخ">تاريخ</button>
+        <button class="category-pill" data-cat="إدارة وأعمال">إدارة وأعمال</button>
+        <button class="category-pill" data-cat="فكر وفلسفة">فكر وفلسفة</button>
+        <button class="category-pill" data-cat="عام">عام</button>
+      </div>
+    </div>
+
+    <!-- Books Grid -->
+    <div class="books-grid" id="booksGrid">
+      <!-- Injected via JavaScript -->
+    </div>
+  </div>
+
+  <!-- Sticky Bottom Audio Player -->
+  <div class="player-bar" id="playerBar">
+    <div class="player-meta">
+      <img src="/static/default_cover.svg" id="playerCover" class="player-thumb" alt="غلاف الكتاب">
+      <div class="player-text">
+        <h4 id="playerTitle">عنوان الكتاب</h4>
+        <p id="playerAuthor">اسم المؤلف</p>
+      </div>
+    </div>
+
+    <div class="player-center">
+      <div class="player-controls">
+        <button class="ctrl-btn" id="seekBackBtn" title="تأخير 15 ثانية">⏪ 15s</button>
+        <button class="ctrl-btn play-btn" id="mainPlayBtn" title="تشغيل / إيقاف">▶</button>
+        <button class="ctrl-btn" id="seekForwardBtn" title="تقديم 15 ثانية">15s ⏩</button>
+      </div>
+      <div class="player-progress">
+        <span class="time-text" id="currentTime">00:00</span>
+        <div class="progress-bar" id="progressBar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <span class="time-text" id="totalDuration">00:00</span>
+      </div>
+    </div>
+
+    <div class="player-right">
+      <button class="speed-btn" id="speedBtn">1.0x</button>
+      <a href="#" id="playerDownloadBtn" class="ctrl-btn" download title="تحميل الكتاب MP3">⬇️</a>
+    </div>
+  </div>
+
+  <audio id="audioElement" preload="metadata"></audio>
+
+  <!-- Upload Modal -->
+  <div class="modal-overlay" id="uploadModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">📤 تحويل كتاب PDF إلى صوتي</h2>
+        <button class="close-btn" id="closeUploadBtn">&times;</button>
+      </div>
+
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-icon">📄</div>
+        <div class="drop-text" id="dropFileName">اسحب وأفلت كتاب PDF هنا</div>
+        <div class="drop-sub">أو انقر لاختيار ملف من جهازك</div>
+        <input type="file" id="fileInput" accept=".pdf" style="display: none;">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="translateSelect">🌐 خيار الترجمة الذكية:</label>
+        <select id="translateSelect" class="form-select">
+          <option value="true">ترجمة آلية إلى العربية الفصحى (إذا كان الكتاب إنجليزياً - موصى به)</option>
+          <option value="false">الاحتفاظ بلغة الكتاب الأصلية دون ترجمة</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="voiceSelect">🎙️ نبرة القارئ الصوتي:</label>
+        <select id="voiceSelect" class="form-select">
+          <option value="ar-SA-HamedNeural">حامد (صوت سعودي فخم، عميق ومريح جداً للاستماع)</option>
+          <option value="ar-SA-ZariyahNeural">زارية (صوت نسائي سعودي نقي وواضح)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="apiKeyInput">مفتاح Gemini API (للفهرسة والتصنيف الذكي - اختياري):</label>
+        <input type="password" id="apiKeyInput" class="form-input" placeholder="ألصق مفتاح Gemini هنا (يتم حفظه محلياً)">
+      </div>
+
+      <button class="btn btn-primary" id="startProcessBtn" style="width: 100%; justify-content: center;" disabled>
+        ⚡ ابدأ التحويل والإضافة للمكتبة
+      </button>
+
+      <!-- Progress Tracking -->
+      <div class="progress-box" id="progressBox">
+        <div class="progress-title">
+          <span>حالة التحويل التلقائي:</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="uploadProgressFill"></div>
+        </div>
+        <div class="progress-status-text" id="progressStatusText">جاري البدء...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let allBooks = [];
+    let currentCategory = 'all';
+    let currentBook = null;
+    let selectedFile = null;
+    let pollInterval = null;
+
+    // Elements
+    const booksGrid = document.getElementById('booksGrid');
+    const searchInput = document.getElementById('searchInput');
+    const categoryTabs = document.getElementById('categoryTabs');
+    const openUploadBtn = document.getElementById('openUploadBtn');
+    const closeUploadBtn = document.getElementById('closeUploadBtn');
+    const uploadModal = document.getElementById('uploadModal');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const dropFileName = document.getElementById('dropFileName');
+    const startProcessBtn = document.getElementById('startProcessBtn');
+    const progressBox = document.getElementById('progressBox');
+    const uploadProgressFill = document.getElementById('uploadProgressFill');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressStatusText = document.getElementById('progressStatusText');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const translateSelect = document.getElementById('translateSelect');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+
+    // Audio Player Elements
+    const playerBar = document.getElementById('playerBar');
+    const audioElement = document.getElementById('audioElement');
+    const playerCover = document.getElementById('playerCover');
+    const playerTitle = document.getElementById('playerTitle');
+    const playerAuthor = document.getElementById('playerAuthor');
+    const mainPlayBtn = document.getElementById('mainPlayBtn');
+    const seekBackBtn = document.getElementById('seekBackBtn');
+    const seekForwardBtn = document.getElementById('seekForwardBtn');
+    const currentTimeEl = document.getElementById('currentTime');
+    const totalDurationEl = document.getElementById('totalDuration');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    const speedBtn = document.getElementById('speedBtn');
+    const playerDownloadBtn = document.getElementById('playerDownloadBtn');
+
+    // Load saved API key
+    apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
+    apiKeyInput.onchange = () => localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
+
+    // Fetch Books on load
+    async function loadLibrary() {
+      try {
+        const res = await fetch('/api/books');
+        allBooks = await res.json();
+        renderBooks();
+      } catch (e) {
+        console.error('Error loading library:', e);
+      }
+    }
+
+    function renderBooks() {
+      const q = searchInput.value.trim().toLowerCase();
+      const filtered = allBooks.filter(b => {
+        const matchCat = currentCategory === 'all' || b.category === currentCategory;
+        const matchQuery = !q || b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || (b.summary && b.summary.toLowerCase().includes(q));
+        return matchCat && matchQuery;
+      });
+
+      if (filtered.length === 0) {
+        booksGrid.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📖</div>
+            <h3 class="empty-title">لا توجد كتب صوتية بعد</h3>
+            <p class="empty-desc">ارفع أول كتاب PDF ليقوم النظام بفهرسته وتصنيفه وتحويله لصوت عالي الجودة تلقائياً.</p>
+            <button class="btn btn-primary" onclick="openUploadBtn.click()">📤 إرسال أول كتاب PDF</button>
+          </div>
+        `;
+        return;
+      }
+
+      booksGrid.innerHTML = filtered.map(b => `
+        <div class="book-card" data-id="${b.id}">
+          <div class="cover-wrapper" onclick="playBook('${b.id}')">
+            <img src="${b.cover_url || '/static/default_cover.svg'}" class="cover-img" alt="${b.title}" onerror="this.src='/static/default_cover.svg'">
+            <span class="cover-badge">${b.category || 'عام'}${b.translated ? ' • مترجم 🌐' : ''}</span>
+            <span class="duration-badge">⏱️ ${b.duration || '00:00'}</span>
+            <div class="play-overlay-btn">▶</div>
+          </div>
+          <div class="book-info">
+            <h3 class="book-title" title="${b.title}">${b.title}</h3>
+            <div class="book-author">✍️ ${b.author || 'غير محدد'}</div>
+            <p class="book-summary">${b.summary || 'كتاب صوتي تم استخراجه وتحويله تلقائياً.'}</p>
+            <div class="book-actions">
+              <button class="btn-listen" onclick="playBook('${b.id}')">▶ استماع</button>
+              <a href="${b.audio_url}" class="btn-download" download title="تحميل ملف الصوت">⬇️</a>
+              <button class="btn-download" style="color:#ef4444;" onclick="deleteBook('${b.id}')" title="حذف الكتاب">🗑️</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Filter by Category
+    categoryTabs.addEventListener('click', (e) => {
+      if (e.target.classList.contains('category-pill')) {
+        document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+        e.target.classList.add('active');
+        currentCategory = e.target.dataset.cat;
+        renderBooks();
+      }
+    });
+
+    searchInput.addEventListener('input', renderBooks);
+
+    // Audio Playback
+    window.playBook = function(id) {
+      const book = allBooks.find(b => b.id === id);
+      if (!book) return;
+      currentBook = book;
+
+      playerCover.src = book.cover_url || '/static/default_cover.svg';
+      playerTitle.textContent = book.title;
+      playerAuthor.textContent = book.author || 'غير محدد';
+      playerDownloadBtn.href = book.audio_url;
+
+      audioElement.src = book.audio_url;
+      audioElement.play();
+      mainPlayBtn.textContent = '⏸';
+      playerBar.classList.add('active');
+    };
+
+    window.deleteBook = async function(id) {
+      if (!confirm('هل أنت متأكد من رغبتك في حذف هذا الكتاب من المكتبة؟')) return;
+      try {
+        await fetch(`/api/books/${id}`, { method: 'DELETE' });
+        loadLibrary();
+      } catch (e) {
+        alert('تعذر حذف الكتاب: ' + e);
+      }
+    };
+
+    mainPlayBtn.onclick = () => {
+      if (audioElement.paused) {
+        audioElement.play();
+        mainPlayBtn.textContent = '⏸';
+      } else {
+        audioElement.pause();
+        mainPlayBtn.textContent = '▶';
+      }
+    };
+
+    audioElement.onplay = () => mainPlayBtn.textContent = '⏸';
+    audioElement.onpause = () => mainPlayBtn.textContent = '▶';
+
+    audioElement.ontimeupdate = () => {
+      const cur = audioElement.currentTime;
+      const dur = audioElement.duration || 0;
+      currentTimeEl.textContent = formatTime(cur);
+      totalDurationEl.textContent = formatTime(dur);
+      const pct = dur > 0 ? (cur / dur) * 100 : 0;
+      progressFill.style.width = pct + '%';
+    };
+
+    progressBar.onclick = (e) => {
+      const rect = progressBar.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const width = rect.width;
+      const dur = audioElement.duration || 0;
+      audioElement.currentTime = (clickX / width) * dur;
+    };
+
+    seekBackBtn.onclick = () => audioElement.currentTime = Math.max(0, audioElement.currentTime - 15);
+    seekForwardBtn.onclick = () => audioElement.currentTime = Math.min(audioElement.duration || 0, audioElement.currentTime + 15);
+
+    const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
+    let speedIdx = 1;
+    speedBtn.onclick = () => {
+      speedIdx = (speedIdx + 1) % speeds.length;
+      const spd = speeds[speedIdx];
+      audioElement.playbackRate = spd;
+      speedBtn.textContent = spd.toFixed(2) + 'x';
+    };
+
+    function formatTime(secs) {
+      if (isNaN(secs)) return '00:00';
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    // Upload & Ingestion Flow
+    openUploadBtn.onclick = () => {
+      uploadModal.classList.add('open');
+      resetUploadModal();
+    };
+
+    closeUploadBtn.onclick = () => {
+      uploadModal.classList.remove('open');
+      if (pollInterval) clearInterval(pollInterval);
+    };
+
+    dropZone.onclick = () => fileInput.click();
+
+    dropZone.ondragover = (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    };
+
+    dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+
+    dropZone.ondrop = (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        handleFileSelect(e.dataTransfer.files[0]);
+      }
+    };
+
+    fileInput.onchange = () => {
+      if (fileInput.files.length) handleFileSelect(fileInput.files[0]);
+    };
+
+    function handleFileSelect(file) {
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        alert('الرجاء اختيار ملف بصيغة PDF فقط.');
+        return;
+      }
+      selectedFile = file;
+      dropFileName.textContent = `📄 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+      startProcessBtn.disabled = false;
+    }
+
+    function resetUploadModal() {
+      selectedFile = null;
+      fileInput.value = '';
+      dropFileName.textContent = 'اسحب وأفلت كتاب PDF هنا';
+      startProcessBtn.disabled = true;
+      startProcessBtn.style.display = 'block';
+      progressBox.style.display = 'none';
+      uploadProgressFill.style.width = '0%';
+      progressPercent.textContent = '0%';
+    }
+
+    startProcessBtn.onclick = async () => {
+      if (!selectedFile) return;
+
+      const formData = new FormData();
+      formData.append('pdf', selectedFile);
+      formData.append('voice', voiceSelect.value);
+      formData.append('auto_translate', translateSelect.value);
+      formData.append('api_key', apiKeyInput.value.trim());
+
+      startProcessBtn.style.display = 'none';
+      progressBox.style.display = 'block';
+      uploadProgressFill.style.width = '10%';
+      progressPercent.textContent = '10%';
+      progressStatusText.textContent = 'جاري رفع الملف إلى السيرفر... 📤';
+
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.error) {
+          alert('خطأ: ' + data.error);
+          resetUploadModal();
+          return;
+        }
+
+        // Start polling task
+        pollTaskProgress(data.task_id);
+      } catch (err) {
+        alert('تعذر رفع الملف: ' + err);
+        resetUploadModal();
+      }
+    };
+
+    function pollTaskProgress(taskId) {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/status/${taskId}`);
+          const data = await res.json();
+
+          if (data.progress >= 0) {
+            uploadProgressFill.style.width = data.progress + '%';
+            progressPercent.textContent = data.progress + '%';
+            progressStatusText.textContent = data.status;
+          }
+
+          if (data.progress === 100) {
+            clearInterval(pollInterval);
+            setTimeout(() => {
+              uploadModal.classList.remove('open');
+              loadLibrary();
+              if (data.book) playBook(data.book.id);
+            }, 1200);
+          } else if (data.progress === -1) {
+            clearInterval(pollInterval);
+            alert('حدث خطأ أثناء المعالجة: ' + data.status);
+            resetUploadModal();
+          }
+        } catch (e) {
+          console.error('Polling error:', e);
+        }
+      }, 1000);
+    }
+
+    // Initialize
+    loadLibrary();
+  </script>
+</body>
+</html>

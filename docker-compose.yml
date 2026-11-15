@@ -1,0 +1,14 @@
+services:
+  audiobooks:
+    build: .
+    container_name: audiobook_studio
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./data:/app/data
+      - ./covers:/app/covers
+      - ./audio:/app/audio
+      - ./uploads:/app/uploads
+    environment:
+      - PORT=8086

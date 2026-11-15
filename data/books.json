@@ -1,0 +1,18 @@
+[
+  {
+    "id": "sample1",
+    "title": "واحة الأحساء: أصالة وتاريخ",
+    "author": "د. عبدالمحسن البشير",
+    "category": "تاريخ",
+    "summary": "جولة صوتية مشوقة في قلب أكبر واحة نخيل في العالم، وتاريخ جبل القارة والعيون العذبة وسوق القيصرية التراثي.",
+    "chapters": [
+      "مقدمة عن واحة الأحساء"
+    ],
+    "cover_url": "/static/default_cover.svg",
+    "audio_url": "/audio/sample1.mp3",
+    "duration": "00:35",
+    "total_pages": 5,
+    "voice": "ar-SA-HamedNeural",
+    "filename": "al_ahsa_history.pdf"
+  }
+]
