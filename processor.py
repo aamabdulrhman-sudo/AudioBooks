@@ -2,10 +2,16 @@ import os
 import re
 import json
 import uuid
+import time
+import shutil
 import asyncio
 import fitz  # PyMuPDF
 import edge_tts
 import requests
+
+COMFY_HOST = os.environ.get('COMFY_HOST', '127.0.0.1')
+COMFY_PORT = os.environ.get('COMFY_PORT', '8188')
+COMFY_OUTPUT_DIR = os.environ.get('COMFY_OUTPUT_DIR', r'D:\comfy\ComfyUI_windows_portable\ComfyUI\output')
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 COVERS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'covers')
@@ -274,6 +280,145 @@ def polish_audiobook_script(text, api_key, is_english=False, progress_callback=N
             
     return "\n\n".join(script_parts)
 
+async def generate_with_drama3(text, book_id, progress_callback=None, task_id=None):
+    """
+    Submits generation to local Fish Audio Drama-3 running on ComfyUI,
+    polls for completion, and downloads the output audio file.
+    """
+    cleaned = clean_raw_text_for_speech(text)
+    if not cleaned:
+        cleaned = "مرحباً بكم في هذا الكتاب الصوتي."
+
+    # Use first ~1200 characters for Drama-3 generation
+    sample_text = cleaned[:1200]
+
+    template = {
+        "1": {
+            "class_type": "T8DramaLoader",
+            "inputs": {
+                "model": "drama3-t8-w4a8.safetensors",
+                "codec": "drama3-codec.safetensors",
+                "expert_cache_gb": 16.0,
+                "gdn_backend": "torch",
+                "model_path": "",
+                "codec_path": "",
+                "text_head_path": "drama3-text-head.safetensors",
+                "line_head_path": "drama3-line-head.safetensors",
+                "scene_head_mode": "compact",
+                "moe_backend": "torch",
+                "cuda_graph": False,
+                "expert_placement": "ram"
+            }
+        },
+        "2": {
+            "class_type": "LoadAudio",
+            "inputs": {
+                "audio": "common_voice_en_10119832.wav"
+            }
+        },
+        "3": {
+            "class_type": "T8DramaReference",
+            "inputs": {
+                "engine": ["1", 0],
+                "audio": ["2", 0],
+                "transcript": "We asked over twenty different people, and they all said it was his.",
+                "name": "ref0",
+                "trim_silence": False,
+                "normalize": False
+            }
+        },
+        "4": {
+            "class_type": "T8DramaSession",
+            "inputs": {
+                "direction": "[narrative]",
+                "references": ["3", 0]
+            }
+        },
+        "5": {
+            "class_type": "T8DramaGenerate",
+            "inputs": {
+                "engine": ["1", 0],
+                "session": ["4", 0],
+                "mode": "speech",
+                "text": sample_text,
+                "lookahead": "",
+                "chunk_bytes": 300,
+                "seed": 42,
+                "temperature": 0.7,
+                "top_p": 0.7,
+                "top_k": 30,
+                "max_frames": 250,
+                "sampling_preset": "expressive",
+                "replace_delivery_tags": False
+            }
+        },
+        "6": {
+            "class_type": "T8DramaDecode",
+            "inputs": {
+                "engine": ["1", 0],
+                "session": ["5", 0],
+                "take_index": -1,
+                "all_takes": False,
+                "shorten_long_pauses": False,
+                "max_pause_seconds": 0.75
+            }
+        },
+        "7": {
+            "class_type": "SaveAudio",
+            "inputs": {
+                "audio": ["6", 0],
+                "filename_prefix": f"Drama3_Book_{book_id}"
+            }
+        }
+    }
+
+    base_url = f"http://{COMFY_HOST}:{COMFY_PORT}"
+    try:
+        resp = requests.post(f"{base_url}/prompt", json={"prompt": template}, timeout=15)
+        if resp.status_code != 200:
+            raise Exception(f"ComfyUI Error: {resp.text}")
+        prompt_id = resp.json()["prompt_id"]
+    except Exception as e:
+        print(f"Error connecting to ComfyUI, falling back: {e}")
+        return await generate_audiobook_files(text, book_id, voice='ar-SA-HamedNeural')
+
+    # Poll ComfyUI
+    start_time = time.time()
+    audio_filename = None
+    while time.time() - start_time < 1800:
+        await asyncio.sleep(3)
+        try:
+            h_resp = requests.get(f"{base_url}/history/{prompt_id}", timeout=10)
+            if h_resp.status_code == 200:
+                h_data = h_resp.json()
+                if prompt_id in h_data:
+                    outputs = h_data[prompt_id].get("outputs", {})
+                    node_7_out = outputs.get("7", {}).get("audio", [])
+                    if node_7_out:
+                        audio_filename = node_7_out[0]["filename"]
+                        break
+        except Exception:
+            pass
+
+        if progress_callback:
+            progress_callback(task_id, 88, "موديل دراما 3 (Fish Audio Drama-3) جالس يولد الصوت المحلي الحين... 🎭")
+
+    if not audio_filename:
+        raise Exception("انتهت مهلة التوليد في موديل دراما 3")
+
+    target_path = os.path.join(AUDIO_DIR, f"{book_id}.flac")
+    local_path = os.path.join(COMFY_OUTPUT_DIR, audio_filename)
+    if os.path.exists(local_path):
+        shutil.copy2(local_path, target_path)
+    else:
+        # Download via /view API
+        file_resp = requests.get(f"{base_url}/view?filename={audio_filename}&type=output", stream=True)
+        with open(target_path, 'wb') as f:
+            for chunk in file_resp.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+    return f"/audio/{book_id}.flac", "00:45"
+
 async def generate_audiobook_files(text, book_id, voice='ar-SA-HamedNeural', max_chars=12000):
     """Generates MP3 audio file from text using edge-tts."""
     cleaned = clean_raw_text_for_speech(text)
@@ -344,8 +489,13 @@ async def process_pdf_pipeline(task_id, pdf_path, filename, api_key=None, voice=
         
         # Step 4: Audio Generation
         if progress_callback:
-            progress_callback(task_id, 85, f"جاري تسجيل الكتاب صوتياً بنبرة احترافية ({voice}) 🎙️")
-        audio_url, duration_str = await generate_audiobook_files(processed_text, book_id, voice=voice)
+            voice_label = "موديل دراما 3 (Fish Audio Drama-3)" if voice == "drama3" else voice
+            progress_callback(task_id, 85, f"جاري تسجيل الكتاب صوتياً بنبرة ({voice_label}) 🎙️")
+            
+        if voice == "drama3":
+            audio_url, duration_str = await generate_with_drama3(processed_text, book_id, progress_callback, task_id)
+        else:
+            audio_url, duration_str = await generate_audiobook_files(processed_text, book_id, voice=voice)
         
         # Step 5: Save to Library
         book_record = {
